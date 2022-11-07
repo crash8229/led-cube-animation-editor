@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "led-cube-animation-editor"
+version = "0.1.0"
+description = "An editor for helping create LED cube animations."
+authors = ["crash8229 <mu304007@gmail.com>"]
+license = "GPL-3.0-only"
+readme = "README.md"
+packages = [{include = "led_cube_animation_editor"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+led-cube-data = "^1.0.0"
+led-cube-view = "^1.0.1"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^0.982"
+black = "^22.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
