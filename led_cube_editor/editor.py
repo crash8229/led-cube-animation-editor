@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional, Tuple
 
 from qtpy.QtCore import Signal, Qt, QRect, QSize, QPoint, QObject, QEvent
@@ -99,60 +100,97 @@ class LEDWithPosition(Led):
 class EditorControls(QGroupBox):
     layer_changed: Signal = Signal(int)  # type: ignore
     frame_changed: Signal = Signal(int)  # type: ignore
+    duration_changed: Signal = Signal(int)  # type: ignore
+    display_mode_changed: Signal = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__("Editor Options", parent)  # type: ignore
-        self._layout: QVBoxLayout = QVBoxLayout(self)  # type: ignore
+        # super().__init__("Editor Options", parent)  # type: ignore
+        super().__init__("", parent)  # type: ignore
+        self._layout: QHBoxLayout = QHBoxLayout(self)  # type: ignore
 
-        #### Selectors ####
-        selectors = QHBoxLayout()
-        self._layout.addLayout(selectors)
+        ## View Box Buttons ##
+        view_buttons = QVBoxLayout()
+        self._layout.addLayout(view_buttons)
+        view_full: QPushButton = QPushButton("Show Full Cube", self)
+        view_layer: QPushButton = QPushButton("Show Active Layer", self)
+        view_buttons.addWidget(view_full)
+        view_buttons.addWidget(view_layer)
+        view_full.clicked.connect(lambda: self.display_mode_changed.emit(0))  # type: ignore
+        view_layer.clicked.connect(lambda: self.display_mode_changed.emit(1))  # type: ignore
 
+        ## Spacer ##
+        spacer = QFrame(self)
+        spacer.setFrameStyle(QFrame.Shape.VLine)
+        self._layout.addWidget(spacer)
+
+        ## Frame Options ##
+        frame_options = QVBoxLayout()
+        self._layout.addLayout(frame_options)
         # Frame Selector
         frame_selector = QWidget(self)
         frame_selector_lo = QVBoxLayout(frame_selector)  # type: ignore
 
-        self._frame_menu_up_button: QPushButton = QPushButton("˄", frame_selector)
-        self._frame_menu: QComboBox = QComboBox(frame_selector)
-        self._frame_menu_down_button: QPushButton = QPushButton("˅", frame_selector)
+        self.__frame_menu_up_button: QPushButton = QPushButton("⟰", frame_selector)
+        self.__frame_menu: QComboBox = QComboBox(frame_selector)
+        self.__frame_menu_down_button: QPushButton = QPushButton("⟱", frame_selector)
 
-        frame_selector_lo.addWidget(self._frame_menu_up_button)
-        frame_selector_lo.addWidget(self._frame_menu)
-        frame_selector_lo.addWidget(self._frame_menu_down_button)
+        frame_selector_lo.addWidget(self.__frame_menu_up_button)
+        frame_selector_lo.addWidget(self.__frame_menu)
+        frame_selector_lo.addWidget(self.__frame_menu_down_button)
 
-        self._frame_menu_up_button.clicked.connect(lambda x: self.__button_change_menu(self._frame_menu, True))  # type: ignore
-        self._frame_menu_down_button.clicked.connect(lambda x: self.__button_change_menu(self._frame_menu, False))  # type: ignore
-        self._frame_menu.currentIndexChanged.connect(lambda x: self.__update_button_states(self._frame_menu, self._frame_menu_up_button, self._frame_menu_down_button))  # type: ignore
-        self._frame_menu.currentIndexChanged.connect(self.frame_changed)  # type: ignore
+        self.__frame_menu_up_button.clicked.connect(  # type: ignore
+            lambda x: self.__button_change_menu(self.__frame_menu, True))
+        self.__frame_menu_down_button.clicked.connect(  # type: ignore
+            lambda x: self.__button_change_menu(self.__frame_menu, False))
+        self.__frame_menu.currentIndexChanged.connect(  # type: ignore
+            lambda x: self.__update_button_states(self.__frame_menu, self.__frame_menu_up_button,
+                                                  self.__frame_menu_down_button))
+        self.__frame_menu.currentIndexChanged.connect(self.frame_changed)  # type: ignore
 
         self.__update_button_states(
-            self._frame_menu, self._frame_menu_up_button, self._frame_menu_down_button
+            self.__frame_menu, self.__frame_menu_up_button, self.__frame_menu_down_button
         )
 
         frame_selector_with_label = WidgetWithLabel(
             frame_selector, "Frame:", "left", self
         )
-        selectors.addWidget(frame_selector_with_label)
+        frame_options.addWidget(frame_selector_with_label)
 
-        # Layer Selector
+        # Frame Duration
+        self.__frame_duration: QSpinBox = QSpinBox(frame_selector)
+        self.__frame_duration.setRange(0, 65535)
+        self.__frame_duration.setValue(5)
+        self.__frame_duration.valueChanged.connect(self.duration_changed)  # type: ignore
+        frame_options.addWidget(WidgetWithLabel(self.__frame_duration, "Duration (ms):", "left", self))
+
+        ## Spacer ##
+        spacer = QFrame(self)
+        spacer.setFrameStyle(QFrame.Shape.VLine)
+        self._layout.addWidget(spacer)
+
+        ## Layer Selector ##
         layer_selector = QWidget(self)
 
         layer_selector_lo = QVBoxLayout(layer_selector)  # type: ignore
-        self._layer_menu_up_button: QPushButton = QPushButton("˄", layer_selector)
-        self._layer_menu: QComboBox = QComboBox(layer_selector)
-        self._layer_menu_down_button: QPushButton = QPushButton("˅", layer_selector)
+        self.__layer_menu_up_button: QPushButton = QPushButton("⟰", layer_selector)
+        self.__layer_menu: QComboBox = QComboBox(layer_selector)
+        self.__layer_menu_down_button: QPushButton = QPushButton("⟱", layer_selector)
 
-        layer_selector_lo.addWidget(self._layer_menu_up_button)
-        layer_selector_lo.addWidget(self._layer_menu)
-        layer_selector_lo.addWidget(self._layer_menu_down_button)
+        layer_selector_lo.addWidget(self.__layer_menu_up_button)
+        layer_selector_lo.addWidget(self.__layer_menu)
+        layer_selector_lo.addWidget(self.__layer_menu_down_button)
 
-        self._layer_menu_up_button.clicked.connect(lambda x: self.__button_change_menu(self._layer_menu, True))  # type: ignore
-        self._layer_menu_down_button.clicked.connect(lambda x: self.__button_change_menu(self._layer_menu, False))  # type: ignore
-        self._layer_menu.currentIndexChanged.connect(lambda x: self.__update_button_states(self._layer_menu, self._layer_menu_up_button, self._layer_menu_down_button))  # type: ignore
-        self._layer_menu.currentIndexChanged.connect(self.layer_changed)  # type: ignore
+        self.__layer_menu_up_button.clicked.connect(  # type: ignore
+            lambda x: self.__button_change_menu(self.__layer_menu, True))
+        self.__layer_menu_down_button.clicked.connect(  # type: ignore
+            lambda x: self.__button_change_menu(self.__layer_menu, False))
+        self.__layer_menu.currentIndexChanged.connect(  # type: ignore
+            lambda x: self.__update_button_states(self.__layer_menu, self.__layer_menu_up_button,
+                                                  self.__layer_menu_down_button))
+        self.__layer_menu.currentIndexChanged.connect(self.layer_changed)  # type: ignore
 
         self.__update_button_states(
-            self._layer_menu, self._layer_menu_up_button, self._layer_menu_down_button
+            self.__layer_menu, self.__layer_menu_up_button, self.__layer_menu_down_button
         )
 
         layer_selector_with_label = WidgetWithLabel(
@@ -161,7 +199,7 @@ class EditorControls(QGroupBox):
         layer_selector_with_label.label.setStyleSheet(
             "QLabel { background-color: green; color: white }"
         )
-        selectors.addWidget(layer_selector_with_label)
+        self._layout.addWidget(layer_selector_with_label)
 
     @staticmethod
     def __button_change_menu(menu: QComboBox, direction: bool) -> None:
@@ -177,29 +215,36 @@ class EditorControls(QGroupBox):
     ) -> None:
         idx = menu.currentIndex()
         if idx == menu.count() - 1:
+            up_button.clearFocus()
             up_button.setEnabled(False)
         else:
             up_button.setEnabled(True)
         if idx <= 0:
+            down_button.clearFocus()
             down_button.setEnabled(False)
         else:
             down_button.setEnabled(True)
 
     def set_layers(self, number: int) -> None:
-        self._layer_menu.clear()
+        self.__layer_menu.clear()
         for i in range(number):
-            self._layer_menu.addItem(f"{i + 1:02d}")
+            self.__layer_menu.addItem(f"{i + 1:02d}")
         self.__update_button_states(
-            self._layer_menu, self._layer_menu_up_button, self._layer_menu_down_button
+            self.__layer_menu, self.__layer_menu_up_button, self.__layer_menu_down_button
         )
 
     def set_frames(self, number: int) -> None:
-        self._frame_menu.clear()
+        self.__frame_menu.clear()
         for i in range(number):
-            self._frame_menu.addItem(f"{i + 1:02d}")
+            self.__frame_menu.addItem(f"{i + 1:02d}")
         self.__update_button_states(
-            self._frame_menu, self._frame_menu_up_button, self._frame_menu_down_button
+            self.__frame_menu, self.__frame_menu_up_button, self.__frame_menu_down_button
         )
+
+    def set_duration(self, ms: int) -> None:
+        self.__frame_duration.valueChanged.disconnect(self.duration_changed)  # type: ignore
+        self.__frame_duration.setValue(ms)
+        self.__frame_duration.valueChanged.connect(self.duration_changed)  # type: ignore
 
 
 class Layer(QWidget):
@@ -241,15 +286,15 @@ class Layer(QWidget):
 
 class Frame(QStackedWidget):
     led_changed: Signal = Signal(int, int, int, bool)  # type: ignore
-    change_layer: Signal = Signal(int)  # type: ignore
 
     def __init__(self, parent: Optional[QWidget], x: int, y: int, z: int, duration: int = 5) -> None:
         super().__init__(parent)
         self.__setup_layers(x, y, z)
-        self.change_layer.connect(self.setCurrentIndex)
-        self.__duration = duration
+        self.__duration = 5
         self.__version = 1
         self.__type = 1
+
+        self.duration = duration
 
     def __setup_layers(self, x: int, y: int, z: int) -> None:
         for z_num in range(z):
@@ -257,8 +302,19 @@ class Frame(QStackedWidget):
             layer.led_changed.connect(self.led_changed)
             self.addWidget(layer)
 
+    def change_layer(self, idx: int) -> None:
+        self.setCurrentIndex(idx)
+
     def get_layers(self) -> Tuple[Layer, ...]:
         return tuple(self.widget(i) for i in range(self.count()))  # type: ignore
+
+    @property
+    def current_layer(self) -> Layer:
+        return self.currentWidget()  # type: ignore
+
+    @property
+    def current_layer_idx(self) -> int:
+        return self.currentIndex()
 
     @property
     def duration(self) -> int:
@@ -276,26 +332,46 @@ class Frame(QStackedWidget):
 
 class LEDLayerEditor(QGroupBox):
     led_changed: Signal = Signal(int, int, int, bool)  # type: ignore
-    change_layer: Signal = Signal(int)  # type: ignore
-    change_frame: Signal = Signal(int)  # type: ignore
     frame_changed: Signal = Signal(int)  # type: ignore
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__("Layer Editor", parent)  # type: ignore
+        # super().__init__("Layer Editor", parent)  # type: ignore
+        super().__init__("", parent)  # type: ignore
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)  # type: ignore
 
         self.__rubberband: QRubberBand = QRubberBand(QRubberBand.Shape.Rectangle, self)
         self.__rubberband_origin: QPoint = QPoint()
+        self.__selected_leds: Tuple[LEDWithPosition, ...] = tuple()
 
         self._layout: QStackedLayout = QStackedLayout(self)  # type: ignore
 
-        self.change_frame.connect(self._layout.setCurrentIndex)
-        self._layout.currentChanged.connect(self.__change_frame)  # type: ignore
-        self.__current_frame: Optional[int] = None
-
     @property
-    def current_frame(self) -> Optional[int]:
-        return self.__current_frame
+    def current_frame(self) -> Frame:
+        return self._layout.currentWidget()  # type: ignore
+
+    def change_frame(self, idx: int) -> None:
+        if self._layout.count() <= idx < 0:
+            raise ValueError("Out of range")
+
+        frame: Frame = self._layout.currentWidget()  # type: ignore
+        try:
+            frame.led_changed.disconnect(self.led_changed)
+        except RuntimeError:
+            pass
+
+        self._layout.setCurrentIndex(idx)
+
+        frame: Frame = self._layout.widget(idx)  # type: ignore
+        frame.led_changed.connect(self.led_changed)
+        self.frame_changed.emit(idx)
+
+    def change_layer(self, idx: int) -> None:
+        frame: Frame = self._layout.currentWidget()  # type: ignore
+        frame.change_layer(idx)
+
+    def change_duration(self, ms: int) -> None:
+        frame: Frame = self._layout.currentWidget()  # type: ignore
+        frame.duration = ms
 
     def get_frame(self, number: int) -> Frame:
         return self._layout.widget(number)  # type: ignore
@@ -310,6 +386,20 @@ class LEDLayerEditor(QGroupBox):
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         self.__rubberband.hide()
+        # TODO: Figure out how to select the LEDs under the rubberband
+        # x1: int
+        # y1: int
+        # x2: int
+        # y2: int
+        # rect = self.__rubberband.geometry()
+        # x1, y1, x2, y2 = rect.getCoords()  # type: ignore
+        # x1, y1 = self.__rubberband.mapToGlobal(QPoint(x1, y1)).toTuple()  # type: ignore
+        # x2, y2 = self.__rubberband.mapToGlobal(QPoint(x2, y2)).toTuple()  # type: ignore
+        # leds = self.current_frame.current_layer.get_leds()
+        # for led in leds:
+        #     x, y = led.mapToGlobal(led.pos()).toTuple()
+        #     if x1 <= x <= x2 and y1 <= y <= y2:
+        #         led.set_status(not led.state)
 
     def set_cube_size(self, x: int, y: int, z: int, frames: int = 1):
         self._layout.blockSignals(True)
@@ -320,27 +410,17 @@ class LEDLayerEditor(QGroupBox):
 
         for frame_num in range(frames):
             frame = Frame(self, x, y, z)
-
             self._layout.addWidget(frame)
 
         self._layout.blockSignals(False)
-        self.__change_frame(self._layout.currentIndex())
-
-    def __change_frame(self, idx: int) -> None:
-        if self.__current_frame is not None:
-            frame: Frame = self._layout.widget(self.__current_frame)  # type: ignore
-            frame.led_changed.disconnect(self.led_changed)
-            self.change_layer.disconnect(frame.change_layer)
-        frame: Frame = self._layout.widget(idx)  # type: ignore
-        frame.led_changed.connect(self.led_changed)
-        self.change_layer.connect(frame.change_layer)
-        self.frame_changed.emit(idx)
+        self.change_frame(self._layout.currentIndex())
 
 
 class LEDCubeEditor(QMainWindow):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle(f"LED Cube Editor {__version__}")
+        self.setWindowIcon(QtGui.QIcon(str(Path(__file__).resolve().parent.joinpath("icon.png"))))
         main_widget = QWidget(self)
         main_layout: QGridLayout = QGridLayout(main_widget)
         main_widget.setLayout(main_layout)
@@ -349,10 +429,10 @@ class LEDCubeEditor(QMainWindow):
         self.setCentralWidget(main_widget)
 
         # Stylesheet for QGroupbox
-        self.setStyleSheet(
-            "QGroupBox { border: 1px solid black; border-radius: 5px; margin-top: 3ex; }"
-            "\nQGroupBox::title { subcontrol-position: top center; subcontrol-origin: margin; }"
-        )
+        # self.setStyleSheet(
+        #     "QGroupBox { border: 1px solid black; border-radius: 5px; margin-top: 3ex; }"
+        #     "\nQGroupBox::title { subcontrol-position: top center; subcontrol-origin: margin; }"
+        # )
 
         # Grid Stretch
         main_layout.setRowStretch(1, 1)
@@ -361,27 +441,32 @@ class LEDCubeEditor(QMainWindow):
 
         # LED Editor Controls
         self.__editor_controls = EditorControls(self)
-        main_layout.addWidget(self.__editor_controls, 0, 0)
+        self.__editor_controls.setEnabled(False)
+        main_layout.addWidget(self.__editor_controls, 0, 0, 1, 2)
 
         # LED Layer Edit
         self.__led_editor = LEDLayerEditor(parent=main_widget)
-        main_layout.addWidget(self.__led_editor, 1, 0, 3, 1)
+        main_layout.addWidget(self.__led_editor, 1, 1, 3, 1)
+        self.__led_editor.setMinimumSize(450, 450)
         self.__editor_controls.layer_changed.connect(self.__led_editor.change_layer)
         self.__editor_controls.frame_changed.connect(self.__led_editor.change_frame)
+        self.__editor_controls.duration_changed.connect(self.__led_editor.change_duration)
+        self.__led_editor.frame_changed.connect(self.__update_frame_duration_control)
 
         # Cube View Controls
-        cube_controls = QGroupBox("View Box Options", main_widget)  # type: ignore
-        cube_controls_lo = QVBoxLayout()
-        cube_controls.setLayout(cube_controls_lo)
-        main_layout.addWidget(cube_controls, 0, 1)
+        # cube_controls = QGroupBox("View Box Options", main_widget)  # type: ignore
+        # cube_controls_lo = QVBoxLayout()
+        # cube_controls.setLayout(cube_controls_lo)
+        # main_layout.addWidget(cube_controls, 0, 1, 1, 1)
 
         # Cube View
         self.__cube_view = LEDCubeView(main_widget)
-        main_layout.addWidget(self.__cube_view, 1, 1, 3, 1)
+        main_layout.addWidget(self.__cube_view, 1, 0, 3, 1)
         self.__config_list = self.__cube_view.config_list()
         self.__led_editor.led_changed.connect(self.__cube_view.set_led)
         self.__cube_view.setMinimumSize(550, 450)
         self.__led_editor.frame_changed.connect(self.__set_frame_view)
+        self.__editor_controls.display_mode_changed.connect(self.__change_display_mode)
         # self.__led_editor.led_changed.connect(lambda xx, yy, zz, ss: print(f"X:{xx}, Y:{yy}, z:{zz}, State:{ss}, "))
 
         self.__load_cube("5x5x5", 3)
@@ -418,6 +503,7 @@ class LEDCubeEditor(QMainWindow):
 
         self.__editor_controls.set_layers(int(config_split[2]))
         self.__editor_controls.set_frames(frames)
+        self.__editor_controls.setEnabled(True)
 
     def __set_frame_view(self, idx: int) -> None:
         leds: Tuple[LEDWithPosition, ...] = tuple(
@@ -427,3 +513,17 @@ class LEDCubeEditor(QMainWindow):
         )
         for led in leds:
             self.__cube_view.set_led(led.x, led.y, led.z, led.state)
+
+    def __update_frame_duration_control(self, idx: int) -> None:
+        self.__editor_controls.set_duration(self.__led_editor.get_frame(idx).duration)
+
+    def __change_display_mode(self, mode: int) -> None:
+        if mode == 0:
+            self.__editor_controls.layer_changed.disconnect(self.__update_layer_view)
+            self.__cube_view.show_cube()
+        elif mode == 1:
+            self.__update_layer_view()
+            self.__editor_controls.layer_changed.connect(self.__update_layer_view)
+
+    def __update_layer_view(self) -> None:
+        self.__cube_view.show_layer(self.__led_editor.current_frame.current_layer_idx)
