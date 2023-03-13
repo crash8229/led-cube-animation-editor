@@ -1,13 +1,29 @@
+import operator
+from copy import deepcopy
+from functools import reduce
+from math import ceil
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict, Any
 
-from qtpy.QtCore import Signal, Qt, QRect, QSize, QPoint, QObject, QEvent
+from qtpy.QtCore import Signal, Qt, QRect, QSize, QPoint
 from qtpy.QtWidgets import *
 from qtpy import QtGui
 
 from led_cube_editor import __version__
 from led_cube_view import LEDCubeView  # type:ignore
 from qtpy_led import Led  # type:ignore
+
+
+class HSpacer(QFrame):
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setFrameStyle(QFrame.Shape.HLine)
+
+
+class VSpacer(QFrame):
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setFrameStyle(QFrame.Shape.VLine)
 
 
 class WidgetWithLabel(QWidget):
@@ -101,7 +117,7 @@ class EditorControls(QGroupBox):
     layer_changed: Signal = Signal(int)  # type: ignore
     frame_changed: Signal = Signal(int)  # type: ignore
     duration_changed: Signal = Signal(int)  # type: ignore
-    display_mode_changed: Signal = Signal(int)
+    display_mode_changed: Signal = Signal(int)  # type: ignore
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         # super().__init__("Editor Options", parent)  # type: ignore
@@ -119,9 +135,7 @@ class EditorControls(QGroupBox):
         view_layer.clicked.connect(lambda: self.display_mode_changed.emit(1))  # type: ignore
 
         ## Spacer ##
-        spacer = QFrame(self)
-        spacer.setFrameStyle(QFrame.Shape.VLine)
-        self._layout.addWidget(spacer)
+        self._layout.addWidget(VSpacer(self))
 
         ## Frame Options ##
         frame_options = QVBoxLayout()
@@ -164,9 +178,7 @@ class EditorControls(QGroupBox):
         frame_options.addWidget(WidgetWithLabel(self.__frame_duration, "Duration (ms):", "left", self))
 
         ## Spacer ##
-        spacer = QFrame(self)
-        spacer.setFrameStyle(QFrame.Shape.VLine)
-        self._layout.addWidget(spacer)
+        self._layout.addWidget(VSpacer(self))
 
         ## Layer Selector ##
         layer_selector = QWidget(self)
@@ -294,6 +306,7 @@ class Frame(QStackedWidget):
         self.__version = 1
         self.__type = 1
 
+        # V1 specific variables
         self.duration = duration
 
     def __setup_layers(self, x: int, y: int, z: int) -> None:
@@ -416,11 +429,116 @@ class LEDLayerEditor(QGroupBox):
         self.change_frame(self._layout.currentIndex())
 
 
+class AnimationSettings(QVBoxLayout):
+    __cube_size_changed: Signal = Signal()  # type: ignore
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__()
+
+        ## V1 Specific ##
+        self.v1_specific = QGroupBox("Animation Options", parent)  # type: ignore
+        self.addWidget(self.v1_specific)
+        v1_specific_lo = QFormLayout(self.v1_specific)
+
+        # Variables
+        self.__animation_settings: Dict[str, Any] = {
+            "name": "",
+            "tlc_count": 0
+        }
+
+        # Widgets
+        self.__name_field = QLineEdit(self.__animation_settings["name"], parent)
+        self.__name_field.setMaxLength(32)
+        self.__name_field.textChanged.connect(lambda x: self.__update_animation_setting("name", x))  # type: ignore
+        v1_specific_lo.addRow("Name:", self.__name_field)
+
+        # Signals
+        self.__cube_size_changed.connect(self.__update_tlc_count)
+
+        ## Cube Settings ##
+        self.cube_specific = QGroupBox("LED Cube Options", parent)  # type: ignore
+        self.addWidget(self.cube_specific)
+        cube_specific_lo = QFormLayout(self.cube_specific)
+
+        # Variables
+        self.__led_cube_settings: Dict[str, Any] = {
+            "dimension": [5, 5, 5],
+            "off_color": [0, 0, 0, 0],
+            "on_color": [1, 0, 0, 1],
+        }
+
+        # Widgets
+        self.__x_dimension = QSpinBox(parent)
+        self.__x_dimension.setRange(2, 16)
+        self.__x_dimension.setValue(self.__led_cube_settings["dimension"][0])
+        label = QLabel("Number of LEDs on X Axis:", parent)  # type: ignore
+        label.setStyleSheet(
+            "QLabel { background-color: blue; color: white }"
+        )
+        cube_specific_lo.addRow(label, self.__x_dimension)
+
+        self.__y_dimension = QSpinBox(parent)
+        self.__y_dimension.setRange(2, 16)
+        self.__y_dimension.setValue(self.__led_cube_settings["dimension"][1])
+        label = QLabel("Number of LEDs on Y Axis:", parent)  # type: ignore
+        label.setStyleSheet(
+            "QLabel { background-color: yellow; color: black }"
+        )
+        cube_specific_lo.addRow(label, self.__y_dimension)
+
+        self.__z_dimension = QSpinBox(parent)
+        self.__z_dimension.setRange(2, 16)
+        self.__z_dimension.setValue(self.__led_cube_settings["dimension"][2])
+        label = QLabel("Number of LEDs on Z Axis:", parent)  # type: ignore
+        label.setStyleSheet(
+            "QLabel { background-color: green; color: white }"
+        )
+        cube_specific_lo.addRow(label, self.__z_dimension)
+
+        # Signals
+        self.__x_dimension.valueChanged.connect(lambda x: self.__update_cube_size(0, x))  # type: ignore
+        self.__y_dimension.valueChanged.connect(lambda x: self.__update_cube_size(1, x))  # type: ignore
+        self.__z_dimension.valueChanged.connect(lambda x: self.__update_cube_size(2, x))  # type: ignore
+
+        self.__cube_size_changed.emit()
+
+    @property
+    def cube_settings(self) -> Dict[str, Any]:
+        return deepcopy(self.__led_cube_settings)
+
+    def set_cube_setting_state(self, state: bool) -> None:
+        self.cube_specific.setEnabled(state)
+        if state:
+            self.cube_specific.show()
+        else:
+            self.cube_specific.hide()
+
+    def __update_cube_size(self, axis: int, dimension: int) -> None:
+        self.__led_cube_settings["dimension"][axis] = dimension
+        self.__cube_size_changed.emit()
+
+    @property
+    def animation_settings(self) -> Dict[str, Any]:
+        return deepcopy(self.__animation_settings)
+
+    def __update_animation_setting(self, key: str, value: Any) -> None:
+        if key not in self.__animation_settings:
+            raise KeyError(f"{key} not found in animation settings")
+        self.__animation_settings[key] = value
+
+    def __update_tlc_count(self) -> None:
+        cube_dimensions = self.__led_cube_settings["dimension"]
+        self.__update_animation_setting(
+            "tlc_count",
+            ceil((reduce(operator.mul, cube_dimensions[:2], 1) + cube_dimensions[2]) / 16)
+        )
+
+
 class LEDCubeEditor(QMainWindow):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle(f"LED Cube Editor {__version__}")
-        self.setWindowIcon(QtGui.QIcon(str(Path(__file__).resolve().parent.joinpath("icon.png"))))
+        self.setWindowIcon(QtGui.QIcon(str(Path(__file__).resolve().parent.joinpath("icon.png"))))  # type: ignore
         main_widget = QWidget(self)
         main_layout: QGridLayout = QGridLayout(main_widget)
         main_widget.setLayout(main_layout)
@@ -428,6 +546,46 @@ class LEDCubeEditor(QMainWindow):
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)  # type: ignore
         self.setCentralWidget(main_widget)
 
+        ## Menu ##
+        menubar = QMenuBar(self)
+        self.setMenuBar(menubar)
+
+        menu = QMenu("File", menubar)  # type: ignore
+        actions: List[QAction] = list()
+        actions.append(QAction("New", menu))
+        actions[-1].triggered.connect(self.__file_new)  # type: ignore
+        actions.append(QAction("Open", menu))
+        actions[-1].triggered.connect(self.__file_open)  # type: ignore
+        actions.append(QAction("Save", menu))
+        actions[-1].triggered.connect(self.__file_save)  # type: ignore
+        actions[-1].setEnabled(False)
+        actions.append(QAction("Save as", menu))
+        actions[-1].triggered.connect(self.__file_save_as)  # type: ignore
+        actions[-1].setEnabled(False)
+        actions.append(QAction("Exit", menu))
+        actions[-1].triggered.connect(self.close)  # type: ignore
+        for a in actions:
+            menu.addAction(a)
+        menubar.addMenu(menu)
+
+        menu = QMenu("View", menubar)  # type: ignore
+        actions = list()
+        actions.append(QAction("Show Library Panel", menu))
+        actions[-1].triggered.connect(self.__view_library_panel)  # type: ignore
+        actions[-1].setCheckable(True)
+        for a in actions:
+            menu.addAction(a)
+        menubar.addMenu(menu)
+
+        menu = QMenu("Animation", menubar)  # type: ignore
+        actions = list()
+        actions.append(QAction("Animation Setup", menu))
+        actions[-1].triggered.connect(self.__animation_setup)  # type: ignore
+        for a in actions:
+            menu.addAction(a)
+        menubar.addMenu(menu)
+
+        ## Widget Setup ##
         # Stylesheet for QGroupbox
         # self.setStyleSheet(
         #     "QGroupBox { border: 1px solid black; border-radius: 5px; margin-top: 3ex; }"
@@ -447,7 +605,7 @@ class LEDCubeEditor(QMainWindow):
         # LED Layer Edit
         self.__led_editor = LEDLayerEditor(parent=main_widget)
         main_layout.addWidget(self.__led_editor, 1, 1, 3, 1)
-        self.__led_editor.setMinimumSize(450, 450)
+        self.__led_editor.setMinimumSize(450, 450)  # type: ignore
         self.__editor_controls.layer_changed.connect(self.__led_editor.change_layer)
         self.__editor_controls.frame_changed.connect(self.__led_editor.change_frame)
         self.__editor_controls.duration_changed.connect(self.__led_editor.change_duration)
@@ -490,21 +648,64 @@ class LEDCubeEditor(QMainWindow):
     #         self.__resize_do = True
     #     return False
 
-    def __load_cube(self, config: str, frames: int = 1, custom: bool = False) -> None:
-        if custom:
-            raise NotImplementedError()
-        elif config not in self.__config_list:
-            raise ValueError(
-                f"Invalid config: {config}\nValid options: {', '.join(self.__config_list)}"
-            )
-        self.__cube_view.load_cube(config)
-        config_split = config.split("x")
-        self.__led_editor.set_cube_size(*map(int, config_split), frames)  # type: ignore
+    #### Menu Actions ####
+    ## File Menu ##
+    def __file_new(self) -> None:
+        raise NotImplementedError
 
-        self.__editor_controls.set_layers(int(config_split[2]))
-        self.__editor_controls.set_frames(frames)
-        self.__editor_controls.setEnabled(True)
+    def __file_open(self) -> None:
+        raise NotImplementedError
 
+    def __file_save(self) -> None:
+        raise NotImplementedError
+
+    def __file_save_as(self) -> None:
+        raise NotImplementedError
+
+    ## View Menu ##
+    def __view_library_panel(self, checked: bool) -> None:
+        raise NotImplementedError
+
+    ## Animation Menu ##
+    def __animation_setup(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Animation Setup")
+        dialog.setMinimumWidth(320)
+        # dialog.resize(dialog.minimumWidth(), dialog.height())  # type: ignore
+        layout = QVBoxLayout()
+        dialog.setLayout(layout)
+
+        settings = AnimationSettings()
+        settings.set_cube_setting_state(False)
+        layout.addLayout(settings)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)  # type: ignore
+        buttons.accepted.connect(dialog.accept)  # type: ignore
+        buttons.rejected.connect(dialog.reject)  # type: ignore
+        layout.addWidget(buttons)
+
+        result = dialog.exec()
+        dialog.deleteLater()
+        if result:
+            print(settings.animation_settings)
+            print(settings.cube_settings)
+            raise NotImplementedError
+
+    #### Events ####
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        close = QMessageBox()  # type: ignore
+        close.setText("Are you sure you want to quit?")
+        close.setWindowTitle("Exit")
+        close.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
+        response: int = close.exec()
+
+        if response == QMessageBox.StandardButton.Yes:
+            event.accept()
+        else:
+            event.ignore()
+
+    #### Slots ####
     def __set_frame_view(self, idx: int) -> None:
         leds: Tuple[LEDWithPosition, ...] = tuple(
             led
@@ -524,6 +725,22 @@ class LEDCubeEditor(QMainWindow):
         elif mode == 1:
             self.__update_layer_view()
             self.__editor_controls.layer_changed.connect(self.__update_layer_view)
+
+    #### Methods ####
+    def __load_cube(self, config: str, frames: int = 1, custom: bool = False) -> None:
+        if custom:
+            raise NotImplementedError()
+        elif config not in self.__config_list:
+            raise ValueError(
+                f"Invalid config: {config}\nValid options: {', '.join(self.__config_list)}"
+            )
+        self.__cube_view.load_cube(config)
+        config_split = config.split("x")
+        self.__led_editor.set_cube_size(*map(int, config_split), frames)  # type: ignore
+
+        self.__editor_controls.set_layers(int(config_split[2]))
+        self.__editor_controls.set_frames(frames)
+        self.__editor_controls.setEnabled(True)
 
     def __update_layer_view(self) -> None:
         self.__cube_view.show_layer(self.__led_editor.current_frame.current_layer_idx)
