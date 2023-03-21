@@ -59,7 +59,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 
 [[package]]
 name = "led-cube-data"
-version = "1.0.0"
+version = "1.1.0"
 description = "File specification used in my LED cube projects."
 category = "main"
 optional = false
@@ -134,7 +134,7 @@ python-versions = ">=3.8"
 
 [[package]]
 name = "numpy-stl"
-version = "3.0.0"
+version = "3.0.1"
 description = "Library to make reading, writing and modifying both binary and ascii STL files easy."
 category = "main"
 optional = false
@@ -154,7 +154,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pathspec"
-version = "0.11.0"
+version = "0.11.1"
 description = "Utility library for gitignore style pattern matching of file paths."
 category = "dev"
 optional = false
@@ -2347,7 +2347,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "78091a3240cc7bca7950c30189e763774f1a5b50171a0c02b7b7c4f2dc084cd9"
+content-hash = "c9af878ff70a5fb315cb2188060e0a2e763c67f3bd6e715837605d78638d54e2"
 
 [metadata.files]
 black = [
@@ -2380,8 +2380,8 @@ kaitaistruct = [
     {file = "kaitaistruct-0.10.tar.gz", hash = "sha256:a044dee29173d6afbacf27bcac39daf89b654dd418cfa009ab82d9178a9ae52a"},
 ]
 led-cube-data = [
-    {file = "led-cube-data-1.0.0.tar.gz", hash = "sha256:06c9ffeb8d7ed3dd28fe8889ec8cc921f1a2bba22ff8fcb99842acce026c9af4"},
-    {file = "led_cube_data-1.0.0-py3-none-any.whl", hash = "sha256:1a643e0ee3583fe15edefdf1441c95b866104b1c43d8c59c00f0288b4993e343"},
+    {file = "led-cube-data-1.1.0.tar.gz", hash = "sha256:2ccb3692cbfc9710ea7f8f793caf20254e542b898cdc2047393e1dd0455d5afd"},
+    {file = "led_cube_data-1.1.0-py3-none-any.whl", hash = "sha256:bf49d0fdfec0fa930f487204b655fa6528e0e10fba9a567428378d13ca726710"},
 ]
 led-cube-view = [
     {file = "led-cube-view-1.1.1.tar.gz", hash = "sha256:b07e994490803e764d80261a0fc806cbd510f2321f9249b3acb39a78b01926c5"},
@@ -2453,16 +2453,16 @@ numpy = [
     {file = "numpy-1.24.2.tar.gz", hash = "sha256:003a9f530e880cb2cd177cba1af7220b9aa42def9c4afc2a2fc3ee6be7eb2b22"},
 ]
 numpy-stl = [
-    {file = "numpy-stl-3.0.0.tar.gz", hash = "sha256:578b78eacb0529ac9aba2f17dcc363d58c7c3c5708710c18f8c1e9965f2e81ac"},
-    {file = "numpy_stl-3.0.0-py3-none-any.whl", hash = "sha256:44d56dec3b409b73f7126089ece859d0213d302e39c2375496e64f6dc574347c"},
+    {file = "numpy-stl-3.0.1.tar.gz", hash = "sha256:dd4da1a379d2632f168518be8dcd9cddd7edc6c3238094fd8d21476b3586a0bc"},
+    {file = "numpy_stl-3.0.1-py3-none-any.whl", hash = "sha256:cd2c4b0032756bb1488559d507825b0dd8d5c2ac4a68638c2145387b2f804691"},
 ]
 packaging = [
     {file = "packaging-23.0-py3-none-any.whl", hash = "sha256:714ac14496c3e68c99c29b00845f7a2b85f3bb6f1078fd9f72fd20f0570002b2"},
     {file = "packaging-23.0.tar.gz", hash = "sha256:b6ad297f8907de0fa2fe1ccbd26fdaf387f5f47c7275fedf8cce89f99446cf97"},
 ]
 pathspec = [
-    {file = "pathspec-0.11.0-py3-none-any.whl", hash = "sha256:3a66eb970cbac598f9e5ccb5b2cf58930cd8e3ed86d393d541eaf2d8b1705229"},
-    {file = "pathspec-0.11.0.tar.gz", hash = "sha256:64d338d4e0914e91c1792321e6907b5a593f1ab1851de7fc269557a21b30ebbc"},
+    {file = "pathspec-0.11.1-py3-none-any.whl", hash = "sha256:d8af70af76652554bd134c22b3e8a1cc46ed7d91edcdd721ef1a0c51a84a5293"},
+    {file = "pathspec-0.11.1.tar.gz", hash = "sha256:2798de800fa92780e33acca925945e9a19a133b715067cf165b8866c15a31687"},
 ]
 platformdirs = [
     {file = "platformdirs-3.1.1-py3-none-any.whl", hash = "sha256:e5986afb596e4bb5bde29a79ac9061aa955b94fca2399b7aaac4090860920dd8"},
