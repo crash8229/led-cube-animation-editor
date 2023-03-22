@@ -546,6 +546,9 @@ class LEDCubeEditor(QMainWindow):
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)  # type: ignore
         self.setCentralWidget(main_widget)
 
+        ## Variables ##
+        self.__display_mode: int = 0
+
         ## Menu ##
         menubar = QMenuBar(self)
         self.setMenuBar(menubar)
@@ -625,6 +628,7 @@ class LEDCubeEditor(QMainWindow):
         self.__cube_view.setMinimumSize(550, 450)
         self.__led_editor.frame_changed.connect(self.__set_frame_view)
         self.__editor_controls.display_mode_changed.connect(self.__change_display_mode)
+        self.__editor_controls.layer_changed.connect(self.__update_layer_view)
         # self.__led_editor.led_changed.connect(lambda xx, yy, zz, ss: print(f"X:{xx}, Y:{yy}, z:{zz}, State:{ss}, "))
 
         self.__load_cube("5x5x5", 3)
@@ -720,11 +724,11 @@ class LEDCubeEditor(QMainWindow):
 
     def __change_display_mode(self, mode: int) -> None:
         if mode == 0:
-            self.__editor_controls.layer_changed.disconnect(self.__update_layer_view)
+            self.__display_mode = 0
             self.__cube_view.show_cube()
         elif mode == 1:
+            self.__display_mode = 1
             self.__update_layer_view()
-            self.__editor_controls.layer_changed.connect(self.__update_layer_view)
 
     #### Methods ####
     def __load_cube(self, config: str, frames: int = 1, custom: bool = False) -> None:
@@ -743,4 +747,5 @@ class LEDCubeEditor(QMainWindow):
         self.__editor_controls.setEnabled(True)
 
     def __update_layer_view(self) -> None:
-        self.__cube_view.show_layer(self.__led_editor.current_frame.current_layer_idx)
+        if self.__display_mode != 0:
+            self.__cube_view.show_layer(self.__led_editor.current_frame.current_layer_idx)
