@@ -5,7 +5,7 @@ from math import ceil
 from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Any
 
-from qtpy.QtCore import Signal, Qt, QRect, QSize, QPoint
+from qtpy.QtCore import Signal, Qt, QRect, QSize, QPoint, QEvent
 from qtpy.QtWidgets import *
 from qtpy import QtGui
 
@@ -173,7 +173,7 @@ class EditorControls(QGroupBox):
         # Frame Duration
         self.__frame_duration: QSpinBox = QSpinBox(frame_selector)
         self.__frame_duration.setRange(0, 65535)
-        self.__frame_duration.setValue(5)
+        self.__frame_duration.setValue(16)
         self.__frame_duration.valueChanged.connect(self.duration_changed)  # type: ignore
         frame_options.addWidget(WidgetWithLabel(self.__frame_duration, "Duration (ms):", "left", self))
 
@@ -299,10 +299,10 @@ class Layer(QWidget):
 class Frame(QStackedWidget):
     led_changed: Signal = Signal(int, int, int, bool)  # type: ignore
 
-    def __init__(self, parent: Optional[QWidget], x: int, y: int, z: int, duration: int = 5) -> None:
+    def __init__(self, parent: Optional[QWidget], x: int, y: int, z: int, duration: int = 16) -> None:
         super().__init__(parent)
         self.__setup_layers(x, y, z)
-        self.__duration = 5
+        self.__duration = duration
         self.__version = 1
         self.__type = 1
 
@@ -348,12 +348,12 @@ class LEDLayerEditor(QGroupBox):
     frame_changed: Signal = Signal(int)  # type: ignore
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
-        # super().__init__("Layer Editor", parent)  # type: ignore
         super().__init__("", parent)  # type: ignore
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)  # type: ignore
 
         self.__rubberband: QRubberBand = QRubberBand(QRubberBand.Shape.Rectangle, self)
         self.__rubberband_origin: QPoint = QPoint()
+        self.__shift_pressed = False
         self.__selected_leds: Tuple[LEDWithPosition, ...] = tuple()
 
         self._layout: QStackedLayout = QStackedLayout(self)  # type: ignore
@@ -389,6 +389,14 @@ class LEDLayerEditor(QGroupBox):
     def get_frame(self, number: int) -> Frame:
         return self._layout.widget(number)  # type: ignore
 
+    def eventFilter(self, watched, event):
+        if event.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) and event.key() == Qt.Key.Key_Shift:
+            if event.type() == QEvent.Type.KeyPress:
+                self.__shift_pressed = True
+            elif event.type() == QEvent.Type.KeyRelease:
+                self.__shift_pressed = False
+        return False
+
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         self.__rubberband_origin = event.pos()
         self.__rubberband.setGeometry(QRect(self.__rubberband_origin, QSize()))  # type: ignore
@@ -399,20 +407,11 @@ class LEDLayerEditor(QGroupBox):
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         self.__rubberband.hide()
-        # TODO: Figure out how to select the LEDs under the rubberband
-        # x1: int
-        # y1: int
-        # x2: int
-        # y2: int
-        # rect = self.__rubberband.geometry()
-        # x1, y1, x2, y2 = rect.getCoords()  # type: ignore
-        # x1, y1 = self.__rubberband.mapToGlobal(QPoint(x1, y1)).toTuple()  # type: ignore
-        # x2, y2 = self.__rubberband.mapToGlobal(QPoint(x2, y2)).toTuple()  # type: ignore
-        # leds = self.current_frame.current_layer.get_leds()
-        # for led in leds:
-        #     x, y = led.mapToGlobal(led.pos()).toTuple()
-        #     if x1 <= x <= x2 and y1 <= y <= y2:
-        #         led.set_status(not led.state)
+        rect = self.__rubberband.geometry()
+        for led in self.current_frame.current_layer.get_leds():
+            led_rect = led.geometry()
+            if led_rect.intersected(rect):
+                led.set_status(not self.__shift_pressed)
 
     def set_cube_size(self, x: int, y: int, z: int, frames: int = 1):
         self._layout.blockSignals(True)
@@ -638,19 +637,7 @@ class LEDCubeEditor(QMainWindow):
         # self.__attribute_list.setColumnCount(2)
         # main_layout.addWidget(self.__attribute_list, 1, 1)
 
-    # def eventFilter(self, watched: QObject, event: QEvent):
-    #     if watched is self.__led_editor and event.type() == QEvent.Type.Resize:
-    #         if self.__resize_do:
-    #             self.__cube_view.setFixedWidth(event.size().width())
-    #             self.__resize_skip = True
-    #             self.__resize_do = False
-    #         elif self.__resize_skip:
-    #             self.__resize_skip = False
-    #             return True
-    #     elif watched is self and event.type() == QEvent.Type.NonClientAreaMouseButtonRelease:
-    #         print("Released")
-    #         self.__resize_do = True
-    #     return False
+        self.installEventFilter(self.__led_editor)
 
     #### Menu Actions ####
     ## File Menu ##
